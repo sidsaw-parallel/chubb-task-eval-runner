@@ -1,0 +1,71 @@
+{
+  "name": "chubb-v1",
+  "version": "2026-09-27 15:00 ET",
+  "min_runner_version": "1.0",
+  "headers": {},
+  "body": {
+    "processor": "core2x",
+    "input": {
+      "account_name": "{{account_name}}",
+      "account_address": "{{account_address}}",
+      "question": "{{question}}\n\n{{answer_options}}",
+      "question_type": "{{question_type}}"
+    },
+    "task_spec": {
+      "input_schema": {
+        "type": "json",
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "account_name": {
+              "type": "string",
+              "description": "Legal name of the company account being underwritten."
+            },
+            "account_address": {
+              "type": "string",
+              "description": "Headquarters address of the account."
+            },
+            "question": {
+              "type": "string",
+              "description": "The underwriting question, including its answer options when it has them."
+            },
+            "question_type": {
+              "type": "string",
+              "enum": [
+                "open",
+                "yes_no",
+                "multiple_choice"
+              ],
+              "description": "open: answer in prose. yes_no and multiple_choice: answer with exactly one of the options listed in the question."
+            }
+          },
+          "required": [
+            "account_name",
+            "account_address",
+            "question",
+            "question_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "output_schema": {
+        "type": "json",
+        "json_schema": {
+          "type": "object",
+          "description": "You are answering a commercial property & casualty underwriting question about a specific company account.\n\nAccount: ${account_name}\nHeadquarters address: ${account_address}\n\nQuestion (${question_type}):\n${question}\n\nWhen the question lists answer options, answer with exactly one of them, reproduced verbatim, and nothing else. Otherwise answer in prose.\n\nResearch the account using current public sources and answer the question directly. Ground every claim in a source you can cite. If the evidence does not support a confident answer, say so explicitly rather than guessing.",
+          "properties": {
+            "answer": {
+              "type": "string",
+              "description": "The answer to the underwriting question. When answer options are listed, exactly one of them, reproduced verbatim.",
+              "enum": "{{answer_options}}"
+            }
+          },
+          "required": [
+            "answer"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}
