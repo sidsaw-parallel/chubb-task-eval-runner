@@ -70,6 +70,11 @@ and the config name and version:
 
 ## If something goes wrong
 
+If `uv` fails with `invalid peer certificate: UnknownIssuer`, your network inspects
+HTTPS traffic. Add `--system-certs` right after `uv run` so uv trusts your
+computer's certificates, e.g. `uv run --system-certs run_eval.py ...`.
+
+
 To re-run only the questions that did not complete, use the command the runner
 prints at the end:
 

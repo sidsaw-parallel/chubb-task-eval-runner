@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["httpx>=0.27"]
+# dependencies = ["httpx>=0.27", "truststore>=0.9", "tzdata"]
 # ///
 """Run a CSV of questions through the Parallel Task API and save every result.
 
@@ -21,6 +21,7 @@ import json
 import os
 import random
 import re
+import ssl
 import sys
 import threading
 import time
@@ -29,6 +30,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
+import truststore
 
 RUNNER_VERSION = "1.0"
 API_BASE = "https://api.parallel.ai"
@@ -332,6 +334,8 @@ class TaskApi:
             base_url=API_BASE,
             headers={**headers, "x-api-key": api_key},
             transport=transport,
+            # OS trust store, so corporate TLS-inspection proxies are trusted.
+            verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT),
             timeout=httpx.Timeout(60.0, read=RESULT_HTTP_TIMEOUT_S),
             limits=httpx.Limits(max_connections=None, max_keepalive_connections=100),
         )

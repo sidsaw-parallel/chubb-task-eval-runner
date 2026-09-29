@@ -16,7 +16,7 @@ Runs the runner against a simulated zero-data-retention API: dropped connections
 answers that can be read only once, resuming a run.
 
 ```
-uv run python -m pytest test_run_eval.py -q
+uv run --with pytest --with httpx --with truststore --with tzdata pytest test_run_eval.py -q
 ```
 
 Expect: `10 passed`.
