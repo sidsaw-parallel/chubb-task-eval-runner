@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import truststore
 
-RUNNER_VERSION = "1.1"
+RUNNER_VERSION = "1.2"
 API_BASE = "https://api.parallel.ai"
 EASTERN = ZoneInfo("America/New_York")
 
@@ -153,6 +153,13 @@ def load_config(path: Path) -> dict[str, Any]:
         raise UserError(
             f"{path}: put the API key in PARALLEL_STRICT_ZDR_API_KEY, not the config"
         )
+    overrides = config.get("question_type_overrides") or {}
+    unknown = set(overrides) - QUESTION_TYPES
+    if unknown or not all(isinstance(v, dict) for v in overrides.values()):
+        raise UserError(
+            f"{path}: question_type_overrides must map "
+            f"{', '.join(sorted(QUESTION_TYPES))} to objects"
+        )
     needed = config.get("min_runner_version")
     if needed and _version(needed) > _version(RUNNER_VERSION):
         raise UserError(
@@ -174,6 +181,24 @@ def config_hash(config: dict[str, Any]) -> str:
 # -------------------------------------------------------------- templating
 
 _DROP = object()
+
+
+def build_request(config: dict[str, Any], row: dict[str, str]) -> Any:
+    """The body, with that question type's override merged over it (null removes a key)."""
+    override = (config.get("question_type_overrides") or {}).get(row["question_type"], {})
+    return render(_merge(config["body"], override), row)
+
+
+def _merge(base: Any, override: Any) -> Any:
+    if not (isinstance(base, dict) and isinstance(override, dict)):
+        return copy.deepcopy(override)
+    out = copy.deepcopy(base)
+    for key, value in override.items():
+        if value is None:
+            out.pop(key, None)
+        else:
+            out[key] = _merge(base.get(key), value) if key in base else copy.deepcopy(value)
+    return out
 
 
 def render(template: Any, row: dict[str, str]) -> Any:
@@ -257,7 +282,9 @@ def summarize(record: dict[str, Any]) -> dict[str, str]:
         answer = ""
     else:
         answer = content
-    if not isinstance(answer, str):
+    if isinstance(answer, list) and all(isinstance(a, str) for a in answer):
+        answer = " | ".join(answer)
+    elif not isinstance(answer, str):
         answer = json.dumps(answer, ensure_ascii=False)
 
     basis = output.get("basis") or []
@@ -542,7 +569,7 @@ def _main(args: argparse.Namespace, transport) -> int:
     digest = config_hash(config)
     if args.limit is not None:
         rows = rows[: args.limit]
-    requests = {row["question_id"]: render(config["body"], row) for row in rows}
+    requests = {row["question_id"]: build_request(config, row) for row in rows}
     headers = render(config.get("headers") or {}, {})
 
     if args.resume:

@@ -60,6 +60,9 @@ and the config name and version:
 | `task_config.json` | An exact copy of the config used |
 | `run_info.json` | Start/end time, question counts by status, runner version |
 
+When a config allows more than one answer (e.g. `multiple_choice` in `chubb-v2`), `answer`
+lists each chosen option separated by ` | `.
+
 `status` is one of:
 
 - `completed`: answered.

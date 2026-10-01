@@ -64,12 +64,16 @@ def _run(run_id, status):
 
 
 def _result(run_id, body):
-    enum = body["task_spec"]["output_schema"]["json_schema"]["properties"]["answer"].get("enum")
+    schema = body["task_spec"]["output_schema"]["json_schema"]["properties"]["answer"]
+    if schema.get("type") == "array":
+        answer = schema["items"]["enum"][:2]
+    else:
+        answer = schema["enum"][0] if "enum" in schema else "Prose answer."
     return {
         "run": _run(run_id, "completed"),
         "output": {
             "type": "json",
-            "content": {"answer": enum[0] if enum else "Prose answer."},
+            "content": {"answer": answer},
             "basis": [{
                 "field": "answer",
                 "reasoning": "Because.",
@@ -185,6 +189,29 @@ def test_resume_refuses_a_different_config(tmp_path):
                           "--resume", str(run_dir)])
 
     assert code == 2
+
+
+def test_question_type_override_allows_several_answers(tmp_path):
+    config = json.loads(CONFIG.read_text())
+    config["question_type_overrides"] = {"multiple_choice": {"task_spec": {"output_schema": {
+        "json_schema": {"properties": {"answer": {
+            "type": "array", "items": {"type": "string", "enum": "{{answer_options}}"},
+            "enum": None,
+        }}}}}}}
+    path = tmp_path / "multi.json"
+    path.write_text(json.dumps(config))
+    fake = FakeTaskApi()
+    code = run_eval.main([str(_questions(tmp_path)), "--config", str(path), "--runs-dir",
+                          str(tmp_path / "runs"), "--yes"], transport=httpx.MockTransport(fake))
+    (run_dir,) = (tmp_path / "runs").iterdir()
+
+    assert code == 0
+    results = _results(run_dir)
+    assert results["Q81_0"]["answer"].count(" | ") == 1
+    assert results["Q41_0"]["answer"] == "Yes"
+    raw = [json.loads(line) for line in (run_dir / "raw.jsonl").read_text().splitlines()]
+    q81 = next(r for r in raw if r["question_id"] == "Q81_0")
+    assert "enum" not in q81["request"]["task_spec"]["output_schema"]["json_schema"]["properties"]["answer"]
 
 
 def test_render_drops_options_placeholder_for_open_questions():
