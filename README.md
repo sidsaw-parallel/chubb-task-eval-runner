@@ -55,7 +55,7 @@ and the config name and version:
 
 | File | Contents |
 | --- | --- |
-| `results.csv` | Your questions plus `answer`, `confidence`, `reasoning`, `citations`, `run_id`, `status`, `latency_s` (seconds from submitting to receiving the answer), `server_latency_s`, `processor`, `config_name`, `config_version`, `error` |
+| `results.csv` | Your questions plus `answer`, `confidence`, `reasoning`, `citations` (each source URL followed by the excerpts used from it), `run_id`, `status`, `latency_s` (seconds from submitting to receiving the answer), `server_latency_s`, `processor`, `config_name`, `config_version`, `error` |
 | `raw.jsonl` | One line per question: the exact request sent and every API response, unmodified |
 | `task_config.json` | An exact copy of the config used |
 | `run_info.json` | Start/end time, question counts by status, runner version |

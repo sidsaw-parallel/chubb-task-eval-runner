@@ -76,7 +76,7 @@ def _result(run_id, body):
                 "confidence": "high",
                 "citations": [
                     {"url": "https://a.example", "title": "A", "excerpts": ["x"]},
-                    {"url": "https://a.example", "title": "A dup"},
+                    {"url": "https://a.example", "title": "A dup", "excerpts": ["x", "y"]},
                     {"url": "https://b.example"},
                 ],
             }],
@@ -128,7 +128,7 @@ def test_full_run_writes_results_raw_log_and_config(tmp_path):
     assert {r["status"] for r in results.values()} == {"completed"}
     assert results["Q41_0"]["answer"] == "Yes"
     assert results["Q01_0"]["answer"] == "Prose answer."
-    assert results["Q01_0"]["citations"] == "A — https://a.example\nhttps://b.example"
+    assert results["Q01_0"]["citations"] == "A — https://a.example\n  - x\n  - y\n\nhttps://b.example"
     assert results["Q01_0"]["server_latency_s"] == "90.0"
     assert results["Q01_0"]["config_name"] == "chubb-v1"
     raw = [json.loads(line) for line in (run_dir / "raw.jsonl").read_text().splitlines()]

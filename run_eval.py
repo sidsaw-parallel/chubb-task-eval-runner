@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import truststore
 
-RUNNER_VERSION = "1.0"
+RUNNER_VERSION = "1.1"
 API_BASE = "https://api.parallel.ai"
 EASTERN = ZoneInfo("America/New_York")
 
@@ -271,14 +271,23 @@ def summarize(record: dict[str, Any]) -> dict[str, str]:
         ]
         return "\n".join(parts)
 
-    citations, seen = [], set()
+    sources: dict[str, tuple[str, list[str]]] = {}
     for b in basis:
         for c in b.get("citations") or []:
             url = c.get("url")
-            if url and url not in seen:
-                seen.add(url)
-                title = (c.get("title") or "").strip()
-                citations.append(f"{title} — {url}" if title else url)
+            if not url:
+                continue
+            title = (c.get("title") or "").strip()
+            _, excerpts = sources.setdefault(url, (title, []))
+            for e in c.get("excerpts") or []:
+                e = str(e).strip()
+                if e and e not in excerpts:
+                    excerpts.append(e)
+    citations = []
+    for url, (title, excerpts) in sources.items():
+        lines = [f"{title} — {url}" if title else url]
+        lines += [f"  - {e}" for e in excerpts]
+        citations.append("\n".join(lines))
 
     return {
         "config_name": record.get("config_name", ""),
@@ -291,9 +300,20 @@ def summarize(record: dict[str, Any]) -> dict[str, str]:
         "answer": answer,
         "confidence": per_field("confidence"),
         "reasoning": per_field("reasoning"),
-        "citations": "\n".join(citations),
+        "citations": _excel_cell("\n\n".join(citations)),
         "error": record.get("error") or "",
     }
+
+
+EXCEL_CELL_LIMIT = 32767
+
+
+def _excel_cell(text: str) -> str:
+    # Excel splits longer cells across rows, shifting every column after it.
+    note = "\n[truncated; full text in raw.jsonl]"
+    if len(text) <= EXCEL_CELL_LIMIT:
+        return text
+    return text[: EXCEL_CELL_LIMIT - len(note)] + note
 
 
 def _server_latency(run: dict[str, Any]) -> float | None:
