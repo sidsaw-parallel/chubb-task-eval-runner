@@ -65,7 +65,8 @@ lists each chosen option separated by ` | `.
 
 `status` is one of:
 
-- `completed`: answered.
+- `completed`: answered, with reasoning and citations.
+- `completed_no_basis`: answered, but the API returned no reasoning or citations.
 - `failed`: the API could not complete that question.
 - `lost`: the network dropped while the answer was being delivered.
 - `timed_out`: the question took longer than `--max-wait-min` (default 30).
@@ -85,7 +86,9 @@ prints at the end:
 uv run run_eval.py my_questions.csv --config configs/chubb-v1.json --resume runs/<run folder>
 ```
 
-Completed answers are kept and not re-run (or re-charged).
+Completed answers are kept and not re-run (or re-charged). Questions that came back
+`completed_no_basis` are re-run. Run the same command again until it prints
+`Nothing left to run.`
 
 Pressing Ctrl-C stops new questions from starting and waits for those already
 running, so their answers are saved. Pressing Ctrl-C a second time abandons them.

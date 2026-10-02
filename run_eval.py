@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import truststore
 
-RUNNER_VERSION = "1.2"
+RUNNER_VERSION = "1.3"
 API_BASE = "https://api.parallel.ai"
 EASTERN = ZoneInfo("America/New_York")
 
@@ -267,8 +267,19 @@ class RunLog:
 def latest_by_question(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     latest: dict[str, dict[str, Any]] = {}
     for record in records:
-        latest[record["question_id"]] = record
+        latest[record["question_id"]] = check_basis(record)
     return latest
+
+
+def check_basis(record: dict[str, Any]) -> dict[str, Any]:
+    """An answer without reasoning or citations is not complete, so --resume re-runs it."""
+    if record["status"] != "completed":
+        return record
+    basis = ((record.get("result") or {}).get("output") or {}).get("basis") or []
+    if any(b.get("reasoning") or b.get("citations") for b in basis):
+        return record
+    return {**record, "status": "completed_no_basis",
+            "error": "the API returned the answer without reasoning or citations"}
 
 
 def summarize(record: dict[str, Any]) -> dict[str, str]:
@@ -655,6 +666,7 @@ def _main(args: argparse.Namespace, transport) -> int:
             outcome = api.run_question(body, time.monotonic() + max_wait)
         except Exception as e:  # keep one bad question from stopping the run
             outcome = {"status": "error", "error": repr(e)}
+        outcome = check_basis(outcome)
         log.append({
             "question_id": qid,
             "config_name": config["name"],

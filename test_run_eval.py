@@ -47,6 +47,10 @@ class FakeTaskApi:
             if action == "drop":
                 del self.runs[run_id]  # the server's read succeeded; the reply never arrives
                 raise httpx.ReadError("connection reset")
+            if action == "no_basis":
+                result = _result(run_id, self.runs.pop(run_id))
+                result["output"]["basis"] = []
+                return httpx.Response(200, json=result)
             if action == "fail":
                 return httpx.Response(404, json={"error": {"message": "Run failed."}})
             body = self.runs.pop(run_id)
@@ -149,6 +153,22 @@ def test_dropped_result_is_lost_not_reread_and_resume_reruns_only_it(tmp_path):
 
     assert _results(run_dir)["Q81_0"]["status"] == "lost"
     assert max(fake.result_calls.values()) == 1
+
+    fake.result_script = {}
+    run_eval.main([str(questions), "--config", str(CONFIG), "--yes", "--resume", str(run_dir)],
+                  transport=httpx.MockTransport(fake))
+
+    assert fake.creates == 4
+    assert {r["status"] for r in _results(run_dir).values()} == {"completed"}
+
+
+def test_answer_without_basis_is_not_complete_and_resume_reruns_it(tmp_path):
+    fake = FakeTaskApi(result_script={"Q41": ["no_basis"]})
+    questions = _questions(tmp_path)
+    _, run_dir = _run_main(tmp_path, fake, questions=questions)
+
+    assert _results(run_dir)["Q41_0"]["status"] == "completed_no_basis"
+    assert _results(run_dir)["Q41_0"]["answer"] == "Yes"
 
     fake.result_script = {}
     run_eval.main([str(questions), "--config", str(CONFIG), "--yes", "--resume", str(run_dir)],
