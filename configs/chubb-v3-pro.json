@@ -1,0 +1,92 @@
+{
+  "name": "chubb-v3-pro",
+  "version": "2026-10-02 11:13 ET",
+  "min_runner_version": "1.2",
+  "headers": {},
+  "body": {
+    "processor": "pro",
+    "input": {
+      "account_name": "{{account_name}}",
+      "account_address": "{{account_address}}",
+      "question": "{{question}}\n\n{{answer_options}}",
+      "question_type": "{{question_type}}"
+    },
+    "task_spec": {
+      "input_schema": {
+        "type": "json",
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "account_name": {
+              "type": "string",
+              "description": "Legal name of the company account being underwritten."
+            },
+            "account_address": {
+              "type": "string",
+              "description": "Address of the account."
+            },
+            "question": {
+              "type": "string",
+              "description": "The underwriting question, including its answer options when it has them."
+            },
+            "question_type": {
+              "type": "string",
+              "enum": [
+                "open",
+                "yes_no",
+                "multiple_choice"
+              ],
+              "description": "open: answer in prose. yes_no: answer with exactly one of the options listed in the question. multiple_choice: answer with every listed option that applies."
+            }
+          },
+          "required": [
+            "account_name",
+            "account_address",
+            "question",
+            "question_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "output_schema": {
+        "type": "json",
+        "json_schema": {
+          "type": "object",
+          "description": "You are an experienced commercial property & casualty underwriter answering a question about a specific company account.\n\nAccount: ${account_name}\nAccount address: ${account_address}\n\nQuestion (${question_type}):\n${question}\n\nWhen the question lists answer options, answer with any that apply (can be more than one for multiple-choice questions; exactly one for yes/no questions), reproduced verbatim, and nothing else. Otherwise answer in prose.\n\nFor multiple-choice questions, select every listed option that applies.\n- Select \"None of the above\" only when the evidence supports that none of the listed exposures applies.\n- Select \"Unknown\" only when there is no evidence, direct or inferred from the account's operations, to support selecting any of the options.\n- \"Unknown\" and \"None of the above\" are only ever selected on their own: never together with any other option, and never with each other.\n\nAnswer only the question asked, in terms of the listed options. Your reasoning should explain why each selected option applies, or for \"None of the above\" or \"Unknown\", why no listed option could be selected. Do not describe, suggest, or reason about exposures, scenarios, or answers that are not among the listed options.\n\nResearch the account using current public sources and answer the question directly. Ground every claim in a source you can cite.\n\nReason like an underwriter. When no source addresses the exposure directly, infer the answer from the account's known operations, services, products, and equipment. For example, if the account's operations clearly exclude an activity, answer \"No\" rather than \"Unknown\". Reserve \"Unknown\" for cases where the available evidence genuinely cannot support a conclusion either way.\n\nWhen you answer \"Unknown\", explain what you looked for about the specific exposure in the question, what you found about the account's operations, and why that is not enough to conclude. Do not give a generic explanation.\n\nOnly use and cite sources you have confirmed refer to this account. Do not cite businesses that merely have a similar name. If you cannot find a record that matches the account, say so instead of citing unrelated companies.\n\nPrefer the account's own website and official sources (government filings, licensing and permit records, regulator databases) over third-party aggregators. Use job boards such as Indeed or Glassdoor only when no better source covers the point.\n\nRefer to the account by its name, ${account_name}, and never by a personal pronoun such as \"she\", \"her\", \"he\", or \"his\".",
+          "properties": {
+            "answer": {
+              "type": "string",
+              "description": "The answer to the underwriting question. For yes/no questions, exactly one of the listed options, reproduced verbatim. In prose answers, refer to the account by name rather than a personal pronoun, and when the answer is unknown, explain specifically what about the exposure in the question could not be determined.",
+              "enum": "{{answer_options}}"
+            }
+          },
+          "required": [
+            "answer"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "question_type_overrides": {
+    "multiple_choice": {
+      "task_spec": {
+        "output_schema": {
+          "json_schema": {
+            "properties": {
+              "answer": {
+                "type": "array",
+                "description": "Every listed option that applies, each reproduced verbatim. \"Unknown\" or \"None of the above\" are only ever selected on their own. Address only the listed options.",
+                "items": {
+                  "type": "string",
+                  "enum": "{{answer_options}}"
+                },
+                "enum": null
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
